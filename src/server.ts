@@ -22,14 +22,14 @@ app.get("/products", async (req: Request, res: Response) => {
 app.post("/products", async (req: Request, res: Response) => {
   const { name_products, brand, stock } = req.body;
   try {
-    const newProducts = await prisma.products.create({
+    await prisma.products.create({
       data: {
         name_products,
         brand,
         stock,
       },
     });
-    res.status(201).json(newProducts);
+    res.status(201).json({ message: "products created successfully" });
   } catch (error) {
     res.status(500).json({ error: "error Creating Products" });
   }
@@ -50,6 +50,27 @@ app.delete("/products/:id", async (req: Request, res: Response) => {
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "error Deleting Products" });
+  }
+});
+
+//update product by id with prisma
+app.put("/products/:id", async (req: Request, res: Response) => {
+  const id_products = parseInt(req.params.id, 10);
+  const { name_products, brand, stock } = req.body;
+
+  try {
+    await prisma.products.update({
+      where: { id_products },
+      data: {
+        name_products,
+        brand,
+        stock,
+      },
+    });
+
+    res.status(200).json({ message: "Products updated successfully" });
+  } catch (error) {
+    res.status(500).json({ error: "error Updating Products" });
   }
 });
 
