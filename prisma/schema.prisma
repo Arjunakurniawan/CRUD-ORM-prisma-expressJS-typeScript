@@ -13,9 +13,17 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model products {
-  id_products Int @id @default(autoincrement())
-  name_products String @db.VarChar(255)
+
+model Category {
+  id Int @id @default(autoincrement())
+  name String 
+  products Product[]
+}
+model Product {
+  id Int @id @default(autoincrement())
+  name_product String @db.VarChar(255)
   brand String @db.VarChar(255)
-  stock Int
+  price String  
+  categoryId Int 
+  category  Category @relation(fields: [categoryId], references: [id])
 }

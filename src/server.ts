@@ -1,32 +1,47 @@
 import express, { Application, Request, Response } from "express";
 import dotenv from "dotenv";
+import bodyParser from "body-parser";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const app: Application = express();
 dotenv.config();
 
-app.use(express.json());
+app.use(bodyParser.json());
 
 //get all products with prisma
 app.get("/products", async (req: Request, res: Response) => {
   try {
-    const getProducts = (await prisma.products.findMany()) || [];
+    const getProducts =
+      (await prisma.product.findMany({
+        include: {
+          category: true,
+        },
+      })) || [];
     res.status(200).json(getProducts);
   } catch (error) {
     res.status(500).json({ error: "Error Get Products" });
   }
 });
 
+interface ProductInput {
+  name_product: string;
+  brand: string;
+  price: string;
+  category: { name: string };
+}
 //create a new products with prisma
 app.post("/products", async (req: Request, res: Response) => {
-  const { name_products, brand, stock } = req.body;
+  const { name_product, brand, price, category }: ProductInput = req.body;
   try {
-    await prisma.products.create({
+    await prisma.product.create({
       data: {
-        name_products,
+        name_product,
         brand,
-        stock,
+        price,
+        category: {
+          create: { name: category.name },
+        },
       },
     });
     res.status(201).json({ message: "products created successfully" });
@@ -38,11 +53,11 @@ app.post("/products", async (req: Request, res: Response) => {
 //delete product by id with prisma
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
-    const id_products = parseInt(req.params.id, 10);
+    const id = parseInt(req.params.id, 10);
 
-    await prisma.products.delete({
+    await prisma.product.delete({
       where: {
-        id_products,
+        id,
       },
     });
 
@@ -55,16 +70,16 @@ app.delete("/products/:id", async (req: Request, res: Response) => {
 
 //update product by id with prisma
 app.put("/products/:id", async (req: Request, res: Response) => {
-  const id_products = parseInt(req.params.id, 10);
-  const { name_products, brand, stock } = req.body;
+  const id = parseInt(req.params.id, 10);
+  const { name_product, brand, price } = req.body;
 
   try {
-    await prisma.products.update({
-      where: { id_products },
+    await prisma.product.update({
+      where: { id },
       data: {
-        name_products,
+        name_product,
         brand,
-        stock,
+        price,
       },
     });
 
