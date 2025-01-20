@@ -1,13 +1,12 @@
 import express, { Application, Request, Response } from "express";
 import dotenv from "dotenv";
-import bodyParser from "body-parser";
 import { PrismaClient } from "@prisma/client";
 
 const prisma = new PrismaClient();
 const app: Application = express();
 dotenv.config();
 
-app.use(bodyParser.json());
+app.use(express.json());
 
 //get all products with prisma
 app.get("/products", async (req: Request, res: Response) => {
@@ -54,7 +53,6 @@ app.post("/products", async (req: Request, res: Response) => {
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-
     await prisma.product.delete({
       where: {
         id,
@@ -80,6 +78,11 @@ app.put("/products/:id", async (req: Request, res: Response) => {
         name_product,
         brand,
         price,
+        category: {
+          create: {
+            name: req.body.category.name,
+          },
+        },
       },
     });
 
