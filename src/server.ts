@@ -12,9 +12,14 @@ app.use(express.json());
 app.get("/products", async (req: Request, res: Response) => {
   try {
     const getProducts =
-      (await prisma.product.findMany({
+      (await prisma.products.findMany({
         include: {
           category: true,
+          transaction: {
+            select: {
+              amount: true,
+            },
+          },
         },
       })) || [];
     res.status(200).json(getProducts);
@@ -23,26 +28,52 @@ app.get("/products", async (req: Request, res: Response) => {
   }
 });
 
-interface ProductInput {
+interface PrismaData {
   name_product: string;
   brand: string;
   price: string;
   category: { name: string };
+  transaction: { amount: string };
 }
+
 //create a new products with prisma
 app.post("/products", async (req: Request, res: Response) => {
-  const { name_product, brand, price, category }: ProductInput = req.body;
   try {
-    await prisma.product.create({
+    const { name_product, brand, price, category, transaction }: PrismaData =
+      req.body;
+
+    const transactionData = await prisma.transactions.findFirst({
+      where: {
+        amount: transaction.amount,
+      },
+    });
+
+    const categoryData = await prisma.categories.findUnique({
+      where: { name: category.name },
+    });
+
+    await prisma.products.create({
       data: {
         name_product,
         brand,
         price,
-        category: {
-          create: { name: category.name },
-        },
+        category: categoryData
+          ? {
+              connect: { id: categoryData.id },
+            }
+          : { create: { name: category.name } },
+        transaction: transactionData
+          ? {
+              connect: { id: transactionData.id },
+            }
+          : {
+              create: {
+                amount: transaction.amount,
+              },
+            },
       },
     });
+
     res.status(201).json({ message: "products created successfully" });
   } catch (error) {
     res.status(500).json({ error: "error Creating Products" });
@@ -53,7 +84,7 @@ app.post("/products", async (req: Request, res: Response) => {
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
-    await prisma.product.delete({
+    await prisma.products.delete({
       where: {
         id,
       },
@@ -69,20 +100,25 @@ app.delete("/products/:id", async (req: Request, res: Response) => {
 //update product by id with prisma
 app.put("/products/:id", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
+
   const { name_product, brand, price } = req.body;
 
+  const categoryData = await prisma.categories.findUnique({
+    where: { name: req.body.category.name },
+  });
+
   try {
-    await prisma.product.update({
+    await prisma.products.update({
       where: { id },
       data: {
         name_product,
         brand,
         price,
-        category: {
-          create: {
-            name: req.body.category.name,
-          },
-        },
+        category: categoryData
+          ? {
+              connect: { id: categoryData.id },
+            }
+          : { create: { name: req.body.category.name } },
       },
     });
 
