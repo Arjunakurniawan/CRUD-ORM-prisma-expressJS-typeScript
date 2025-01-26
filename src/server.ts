@@ -1,12 +1,13 @@
 import express, { Application, Request, Response } from "express";
 import dotenv from "dotenv";
 import { PrismaClient } from "@prisma/client";
+import bodyParser from "body-parser";
 
 const prisma = new PrismaClient();
 const app: Application = express();
-dotenv.config();
 
-app.use(express.json());
+app.use(bodyParser.json());
+dotenv.config();
 
 //get all products with prisma
 app.get("/products", async (req: Request, res: Response) => {
@@ -14,71 +15,86 @@ app.get("/products", async (req: Request, res: Response) => {
     const getProducts =
       (await prisma.products.findMany({
         include: {
+          product_detail: true,
           category: true,
-          transaction: {
-            select: {
-              amount: true,
-            },
-          },
         },
       })) || [];
     res.status(200).json(getProducts);
   } catch (error) {
+    console.error(error);
     res.status(500).json({ error: "Error Get Products" });
   }
 });
 
-interface PrismaData {
-  name_product: string;
-  brand: string;
-  price: string;
+interface ProductRequest {
+  product_name: string;
+  product_brand: string;
+  product_price: string;
   category: { name: string };
-  transaction: { amount: string };
+  image: string;
+  description: string;
 }
 
 //create a new products with prisma
-app.post("/products", async (req: Request, res: Response) => {
-  try {
-    const { name_product, brand, price, category, transaction }: PrismaData =
-      req.body;
+app.post(
+  "/products",
+  async (req: Request<{}, {}, ProductRequest>, res: Response) => {
+    try {
+      const {
+        product_name,
+        product_brand,
+        product_price,
+        image,
+        description,
+        category,
+      } = req.body;
+      console.log("request body", req.body);
 
-    const transactionData = await prisma.transactions.findFirst({
-      where: {
-        amount: transaction.amount,
-      },
-    });
+      const categoryData = await prisma.categories.findUnique({
+        where: { name: category.name },
+      });
 
-    const categoryData = await prisma.categories.findUnique({
-      where: { name: category.name },
-    });
+      if (
+        !product_name ||
+        !product_brand ||
+        !product_price ||
+        !image ||
+        !description
+      ) {
+        res.status(400).json({ error: "All fields are required." });
+      }
 
-    await prisma.products.create({
-      data: {
-        name_product,
-        brand,
-        price,
-        category: categoryData
-          ? {
-              connect: { id: categoryData.id },
-            }
-          : { create: { name: category.name } },
-        transaction: transactionData
-          ? {
-              connect: { id: transactionData.id },
-            }
-          : {
-              create: {
-                amount: transaction.amount,
+      const productCreate = await prisma.products.create({
+        data: {
+          product_name,
+          product_brand,
+          product_price,
+          category: categoryData
+            ? {
+                connect: { id: categoryData.id },
+              }
+            : {
+                create: {
+                  name: category.name,
+                },
               },
+          product_detail: {
+            create: {
+              image,
+              description,
             },
-      },
-    });
+          },
+        },
+      });
 
-    res.status(201).json({ message: "products created successfully" });
-  } catch (error) {
-    res.status(500).json({ error: "error Creating Products" });
+      res.status(201).json(productCreate);
+      console.log("success created product");
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "error Creating Products" });
+    }
   }
-});
+);
 
 //delete product by id with prisma
 app.delete("/products/:id", async (req: Request, res: Response) => {
@@ -101,7 +117,7 @@ app.delete("/products/:id", async (req: Request, res: Response) => {
 app.put("/products/:id", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
 
-  const { name_product, brand, price } = req.body;
+  const { product_name, product_brand, product_price } = req.body;
 
   const categoryData = await prisma.categories.findUnique({
     where: { name: req.body.category.name },
@@ -111,9 +127,9 @@ app.put("/products/:id", async (req: Request, res: Response) => {
     await prisma.products.update({
       where: { id },
       data: {
-        name_product,
-        brand,
-        price,
+        product_name,
+        product_brand,
+        product_price,
         category: categoryData
           ? {
               connect: { id: categoryData.id },
