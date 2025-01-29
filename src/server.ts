@@ -100,6 +100,13 @@ app.post(
 app.delete("/products/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id, 10);
+
+    await prisma.products.deleteMany({
+      where: {
+        id,
+      },
+    });
+
     await prisma.products.delete({
       where: {
         id,
@@ -117,7 +124,13 @@ app.delete("/products/:id", async (req: Request, res: Response) => {
 app.put("/products/:id", async (req: Request, res: Response) => {
   const id = parseInt(req.params.id, 10);
 
-  const { product_name, product_brand, product_price } = req.body;
+  const {
+    product_name,
+    product_brand,
+    product_price,
+    image,
+    description,
+  }: ProductRequest = req.body;
 
   const categoryData = await prisma.categories.findUnique({
     where: { name: req.body.category.name },
@@ -135,6 +148,12 @@ app.put("/products/:id", async (req: Request, res: Response) => {
               connect: { id: categoryData.id },
             }
           : { create: { name: req.body.category.name } },
+        product_detail: {
+          update: {
+            image,
+            description,
+          },
+        },
       },
     });
 

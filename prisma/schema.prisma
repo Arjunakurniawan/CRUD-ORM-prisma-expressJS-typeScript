@@ -23,8 +23,6 @@ model Products {
   category           Categories           @relation(fields: [category_id], references: [id])
   product_categories product_categories[]
   product_detail     product_details?     @relation("ProductDetail")
-
-  @@index([category_id], map: "Products_category_id_fkey")
 }
 
 model product_details {
@@ -32,7 +30,7 @@ model product_details {
   image       String   @db.Text
   description String   @db.Text
   product_id  Int      @unique
-  product     Products @relation("ProductDetail", fields: [product_id], references: [id])
+  product     Products @relation("ProductDetail", fields: [product_id], references: [id], onDelete: Cascade)
 }
 
 model product_categories {
@@ -40,8 +38,5 @@ model product_categories {
   product_id  Int
   category_id Int
   category    Categories @relation(fields: [category_id], references: [id])
-  product     Products   @relation(fields: [product_id], references: [id])
-
-  @@index([category_id], map: "product_categories_category_id_fkey")
-  @@index([product_id], map: "product_categories_product_id_fkey")
+  product     Products   @relation(fields: [product_id], references: [id], onDelete: Cascade)
 }
